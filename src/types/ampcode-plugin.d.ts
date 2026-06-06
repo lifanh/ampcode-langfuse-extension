@@ -40,6 +40,7 @@ declare module '@ampcode/plugin' {
   export interface PluginUI {
     notify(message: string): Promise<void>
     input(options: PluginInputOptions): Promise<string | undefined>
+    select(options: PluginSelectOptions): Promise<string | undefined>
   }
 
   export interface PluginInputOptions {
@@ -47,6 +48,13 @@ declare module '@ampcode/plugin' {
     helpText?: string
     initialValue?: string
     submitButtonText?: string
+  }
+
+  export interface PluginSelectOptions {
+    title: string
+    message?: string
+    initialValue?: string
+    options: string[]
   }
 
   export interface SessionStartEvent {

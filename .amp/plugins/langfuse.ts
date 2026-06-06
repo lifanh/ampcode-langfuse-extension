@@ -1,7 +1,7 @@
 import type { PluginAPI } from '@ampcode/plugin'
 
 import { createAmpTelemetryAdapter } from '../../src/adapter/amp-events'
-import { configFromSources, describeConfigStatus, type LangfuseExtensionConfig, type LangfusePluginSettings } from '../../src/config/env'
+import { configFromSources, describeCaptureSettings, describeConfigStatus, type LangfuseExtensionConfig, type LangfusePluginSettings } from '../../src/config/env'
 import { JsonlTransport } from '../../src/transport/jsonl'
 import { LangfuseTransport } from '../../src/transport/langfuse'
 import type { AgentTelemetryEvent } from '../../src/telemetry/agent-telemetry-event'
@@ -58,7 +58,23 @@ export default function (amp: PluginAPI) {
 
   amp.registerCommand('langfuse-status', { title: 'Status', category: 'Langfuse', description: 'Show Langfuse telemetry configuration status' }, async (ctx) => {
     await loadConfigFromAmp()
-    await ctx.ui.notify(describeConfigStatus(config).message)
+    await ctx.ui.notify(`${describeConfigStatus(config).message} ${describeCaptureSettings(config)}`)
+  })
+
+  amp.registerCommand('langfuse-configure-capture', { title: 'Configure Capture', category: 'Langfuse', description: 'Configure prompt, output, tool I/O, and cwd capture' }, async (ctx) => {
+    await loadConfigFromAmp()
+    const settings = (await amp.configuration.get()) as LangfusePluginSettings
+    const current = settings.langfuse ?? settings['amp.langfuse'] ?? {}
+    const next = {
+      ...current,
+      captureInputs: await selectBoolean(ctx, 'Capture user prompts?', config.captureInputs),
+      captureOutputs: await selectBoolean(ctx, 'Capture assistant outputs?', config.captureOutputs),
+      captureToolIo: await selectBoolean(ctx, 'Capture tool input/output?', config.captureToolIo),
+      captureCwd: await selectBoolean(ctx, 'Capture shell working directories?', config.captureCwd),
+    }
+    await amp.configuration.update({ langfuse: next }, 'workspace')
+    await loadConfigFromAmp()
+    await ctx.ui.notify(describeCaptureSettings(config))
   })
 
   amp.registerCommand('langfuse-configure', { title: 'Configure', category: 'Langfuse', description: 'Configure Langfuse export for this workspace' }, async (ctx) => {
@@ -86,7 +102,8 @@ export default function (amp: PluginAPI) {
     })
     if (secretKey === undefined) return
 
-    const current = ((await amp.configuration.get()) as LangfusePluginSettings).langfuse ?? {}
+    const settings = (await amp.configuration.get()) as LangfusePluginSettings
+    const current = settings.langfuse ?? settings['amp.langfuse'] ?? {}
     await amp.configuration.update({
       langfuse: {
         ...current,
@@ -133,4 +150,14 @@ export default function (amp: PluginAPI) {
   process.once('beforeExit', () => {
     void flush()
   })
+}
+
+async function selectBoolean(ctx: { ui: { select(options: { title: string; message?: string; initialValue?: string; options: string[] }): Promise<string | undefined> } }, title: string, current: boolean): Promise<boolean> {
+  const selected = await ctx.ui.select({
+    title,
+    message: 'These settings can send sensitive prompt, response, tool, or local-path data to Langfuse. Strict redaction remains enabled unless disabled separately.',
+    initialValue: current ? 'on' : 'off',
+    options: ['off', 'on'],
+  })
+  return selected ? selected === 'on' : current
 }

@@ -30,6 +30,7 @@ export interface LangfusePluginSettings {
     debug?: boolean | string
     localJsonlPath?: string
   }
+  'amp.langfuse'?: LangfusePluginSettings['langfuse']
 }
 
 export interface ConfigStatus {
@@ -62,7 +63,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
 
 export function configFromSources(env: Record<string, string | undefined> = process.env, settings: LangfusePluginSettings = {}): LangfuseExtensionConfig {
   const defaults = createDefaultConfig()
-  const langfuse = settings.langfuse ?? {}
+  const langfuse = settings.langfuse ?? settings['amp.langfuse'] ?? {}
   return {
     ...defaults,
     publicKey: env.LANGFUSE_PUBLIC_KEY ?? langfuse.publicKey,
@@ -95,6 +96,14 @@ export function describeConfigStatus(config: LangfuseExtensionConfig): ConfigSta
       ? `Langfuse export enabled for ${config.baseUrl}. Local JSONL telemetry enabled at ${config.localJsonlPath}.`
       : `Langfuse export disabled; missing ${missingLangfuseKeys.join(', ')}. Local JSONL telemetry enabled at ${config.localJsonlPath}.`,
   }
+}
+
+export function describeCaptureSettings(config: LangfuseExtensionConfig): string {
+  return `Capture settings: inputs ${onOff(config.captureInputs)}, outputs ${onOff(config.captureOutputs)}, tool I/O ${onOff(config.captureToolIo)}, cwd ${onOff(config.captureCwd)}.`
+}
+
+function onOff(value: boolean): 'on' | 'off' {
+  return value ? 'on' : 'off'
 }
 
 function stringValue(value: string | number | boolean | undefined): string | undefined {

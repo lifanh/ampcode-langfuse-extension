@@ -77,7 +77,22 @@ Recommended first-time setup:
    Langfuse: Status
    ```
 
-   This reports whether Langfuse export is enabled and which required keys are missing without exposing secrets.
+   This reports whether Langfuse export is enabled, which required keys are missing, and the current capture settings without exposing secrets.
+
+Optional: enable richer input/output capture from the command palette:
+
+```text
+Langfuse: Configure Capture
+```
+
+This lets you toggle:
+
+- user prompt capture (`captureInputs`)
+- assistant output capture (`captureOutputs`)
+- tool input/output capture (`captureToolIo`)
+- shell working-directory capture (`captureCwd`)
+
+The defaults are all off. Only enable these if you are comfortable sending that data to Langfuse. Strict redaction remains enabled unless you explicitly disable it with `LANGFUSE_REDACTION_MODE=off` or equivalent workspace configuration.
 
 Environment variables are still supported and override Amp workspace configuration. Set variables before starting Amp so the plugin process can read them.
 
@@ -121,14 +136,18 @@ Boolean variables accept `1`, `true`, `yes`, or `on` as true values. Other value
 
 ### Amp workspace configuration
 
-`Langfuse: Configure` writes this namespaced shape to Amp workspace configuration:
+`Langfuse: Configure` and `Langfuse: Configure Capture` write this namespaced shape to Amp workspace configuration:
 
 ```ts
 {
   langfuse: {
     baseUrl: 'https://cloud.langfuse.com',
     publicKey: 'pk-lf-...',
-    secretKey: 'sk-lf-...'
+    secretKey: 'sk-lf-...',
+    captureInputs: false,
+    captureOutputs: false,
+    captureToolIo: false,
+    captureCwd: false
   }
 }
 ```
@@ -151,7 +170,7 @@ By default, the plugin does **not** capture raw prompts, assistant messages, too
 
 The strict redactor replaces common credential fields and token-looking strings, including authorization headers, cookies, passwords, API keys, private-key fields, `sk-*` values, and `password=...` fragments.
 
-Only set capture flags to `true` if you are comfortable writing that data to the local JSONL output.
+Only set capture flags to `true` if you are comfortable writing that data to the local JSONL output and sending it to Langfuse when export is configured.
 
 ## JSONL output shape
 
