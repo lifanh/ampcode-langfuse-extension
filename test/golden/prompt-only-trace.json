@@ -1,0 +1,14 @@
+{
+  "session_id": "T-thread",
+  "trace_id": "T-thread:msg-1",
+  "status": "done",
+  "observations": [
+    {
+      "id": "agent:T-thread:msg-1",
+      "name": "agent",
+      "type": "agent",
+      "status": "done",
+      "children": []
+    }
+  ]
+}

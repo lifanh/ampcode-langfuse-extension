@@ -1,0 +1,7 @@
+node_modules/
+.amp/langfuse/
+.amp/settings.json
+.amp/settings.json.amp-write-meta
+**/.amp/langfuse/
+*.log
+.DS_Store

@@ -1,0 +1,14 @@
+[
+  {
+    "thread": { "id": "T-thread" },
+    "id": "msg-1",
+    "message": "summarize this repository"
+  },
+  {
+    "thread": { "id": "T-thread" },
+    "id": "msg-1",
+    "message": "summarize this repository",
+    "status": "done",
+    "messages": []
+  }
+]
