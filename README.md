@@ -1,125 +1,140 @@
 # ampcode-langfuse-extension
 
-Project-local Amp plugin prototype for exporting Amp agent telemetry in a Langfuse-compatible shape.
+Amp plugin for exporting Amp agent telemetry to [Langfuse](https://langfuse.com/).
 
-This repository currently implements the first usable Langfuse integration milestone from [`docs/initial-plan.md`](docs/initial-plan.md): it listens to Amp plugin lifecycle/tool events, normalizes them into `AgentTelemetryEvent` records, applies privacy defaults, writes local JSONL telemetry, and sends completed Amp turns to Langfuse when credentials are configured.
+Install the bundled plugin file, reload Amp plugins, run `Langfuse: Configure`, and each completed Amp turn is sent to Langfuse as a trace with child spans for tool calls.
 
-## Current capabilities
+## Quick start: install and configure
 
-- Registers Amp plugin handlers for:
-  - `session.start`
-  - `agent.start`
-  - `tool.call`
-  - `tool.result`
-  - `agent.end`
-- Emits one normalized event stream per Amp thread/user turn.
-- Correlates tool calls with the active agent turn using Amp thread/message IDs and `toolUseID`.
-- Derives safe shell/file metadata using Amp plugin helper APIs when available.
-- Writes newline-delimited JSON telemetry locally.
-- Sends completed agent turns to Langfuse as one trace with child span observations when `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set.
-- Provides command-palette commands for workspace credential setup, status checks, and capture settings.
-- Keeps prompt, assistant output, and tool I/O capture disabled by default.
-- Redacts common secret-bearing fields and token-looking values before output.
+### 1. Download or copy the plugin file
 
-## Requirements
-
-- [Amp](https://ampcode.com/) with plugin support.
-- [Bun](https://bun.sh/) for tests and the Amp plugin runtime.
-
-For local development/typechecking:
-
-```bash
-bun install
-```
-
-## Installation
-
-This repository can produce a standalone bundled plugin artifact for other Amp users:
-
-```bash
-bun run build:plugin
-```
-
-The distributable file is:
+The file end users need is:
 
 ```text
 dist/langfuse.ts
 ```
 
-See [`docs/onboarding.md`](docs/onboarding.md) for global and project-local install instructions.
+You do **not** need to install this whole repository to use the extension. Download `dist/langfuse.ts` from the latest release, or from this repository if you cloned it.
 
-In this development workspace, the plugin is already placed where Amp loads project plugins:
+If you downloaded it to your Downloads folder, the source path is probably:
 
 ```text
-.amp/plugins/langfuse.ts
+~/Downloads/langfuse.ts
 ```
 
-To use it in this workspace:
+Maintainers can rebuild the artifact with:
 
-1. Open this project in Amp.
-2. Reload plugins from the Amp command palette:
+```bash
+bun run build:plugin
+```
 
-   ```text
-   plugins: reload
-   ```
+### 2. Copy it to an Amp plugins/extensions folder
 
-3. Start or continue an Amp thread in this workspace.
-4. Inspect emitted telemetry at the configured JSONL path. By default:
+For a user-wide install, copy it to Amp's global plugins folder. Use this if you want Langfuse telemetry in every Amp workspace:
 
-   ```text
-   .amp/langfuse/events.jsonl
-   ```
+```bash
+mkdir -p ~/.config/amp/plugins
+cp dist/langfuse.ts ~/.config/amp/plugins/langfuse.ts
+```
 
-Each line is one normalized telemetry event.
+If you downloaded the file instead of cloning the repo:
 
-## Configuration
+```bash
+mkdir -p ~/.config/amp/plugins
+cp ~/Downloads/langfuse.ts ~/.config/amp/plugins/langfuse.ts
+```
 
-Configuration can be done from Amp or with environment variables.
+Or, for a single-workspace install, copy it into that repository. Use this if you only want the extension enabled for one project:
 
-Recommended first-time setup:
+```bash
+mkdir -p .amp/plugins
+cp dist/langfuse.ts .amp/plugins/langfuse.ts
+```
 
-1. Reload plugins from the Amp command palette.
-2. Run:
+If installing directly from GitHub, replace `<owner>` and `<version>` with the repository owner and release tag:
 
-   ```text
-   Langfuse: Configure
-   ```
+```bash
+mkdir -p ~/.config/amp/plugins
+curl -fsSL https://raw.githubusercontent.com/<owner>/ampcode-langfuse-extension/<version>/dist/langfuse.ts \
+  -o ~/.config/amp/plugins/langfuse.ts
+```
 
-3. Enter your Langfuse base URL, public key, and secret key. The plugin stores these in Amp workspace configuration.
-4. Run:
+### 3. Reload Amp plugins
 
-   ```text
-   Langfuse: Status
-   ```
+In Amp, open the command palette and run:
 
-   This reports whether Langfuse export is enabled, which required keys are missing, and the current capture settings without exposing secrets.
+```text
+plugins: reload
+```
 
-Optional: enable richer input/output capture from the command palette:
+### 4. Configure Langfuse credentials
+
+Run this command from the Amp command palette:
+
+```text
+Langfuse: Configure
+```
+
+Enter:
+
+- Langfuse base URL, for example `https://cloud.langfuse.com` or `https://us.cloud.langfuse.com`
+- Langfuse public key
+- Langfuse secret key
+
+Then confirm setup with:
+
+```text
+Langfuse: Status
+```
+
+The status command reports whether Langfuse export is enabled, which required settings are missing, and the current capture settings without exposing secrets.
+
+### 5. Start using Amp
+
+Start or continue an Amp thread in the workspace. After each Amp turn ends, the plugin sends one Langfuse trace:
+
+- Trace name: `ampcode.agent`
+- Trace ID: `<amp-thread-id>:<amp-message-id>`
+- Session ID: Amp thread ID
+- Child spans: correlated tool calls
+
+The plugin also writes local JSONL telemetry for debugging. By default:
+
+```text
+.amp/langfuse/events.jsonl
+```
+
+For the full onboarding guide, including upgrade and uninstall steps, see [`docs/onboarding.md`](docs/onboarding.md).
+
+## What gets captured
+
+By default, this plugin is metadata-only:
+
+- It records Amp session, agent, and tool lifecycle events.
+- It records safe derived metadata such as tool names, statuses, shell command strings, and repo-relative modified file paths when available.
+- It does **not** capture raw prompts, assistant output, tool input/output, or shell working directories by default.
+- It redacts common credential fields and token-looking values before local JSONL output or Langfuse export.
+
+To opt into richer content capture, run:
 
 ```text
 Langfuse: Configure Capture
 ```
 
-This lets you toggle:
+You can toggle:
 
 - user prompt capture (`captureInputs`)
 - assistant output capture (`captureOutputs`)
 - tool input/output capture (`captureToolIo`)
 - shell working-directory capture (`captureCwd`)
 
-The defaults are all off. Only enable these if you are comfortable sending that data to Langfuse. Strict redaction remains enabled unless you explicitly disable it with `LANGFUSE_REDACTION_MODE=off` or equivalent workspace configuration.
+Only enable these if you are comfortable writing that data to local JSONL telemetry and sending it to Langfuse.
 
-Environment variables are still supported and override Amp workspace configuration. Set variables before starting Amp so the plugin process can read them.
+## Configuration
 
-Example:
+Most users should configure from Amp with `Langfuse: Configure`. Environment variables are also supported and override Amp workspace configuration. Set variables before starting Amp so the plugin process can read them.
 
-```bash
-export LANGFUSE_DEBUG=true
-export LANGFUSE_LOCAL_JSONL_PATH=.amp/langfuse/events.jsonl
-amp
-```
-
-To send traces to Langfuse, also set your project credentials before starting Amp:
+To send traces to Langfuse without using the command-palette setup:
 
 ```bash
 export LANGFUSE_PUBLIC_KEY=pk-lf-...
@@ -127,6 +142,22 @@ export LANGFUSE_SECRET_KEY=sk-lf-...
 export LANGFUSE_BASE_URL=https://cloud.langfuse.com
 amp
 ```
+
+Optional local-debug settings:
+
+```bash
+export LANGFUSE_DEBUG=true
+export LANGFUSE_LOCAL_JSONL_PATH=.amp/langfuse/events.jsonl
+amp
+```
+
+If you install the plugin globally and relative JSONL paths resolve somewhere unexpected, set `LANGFUSE_LOCAL_JSONL_PATH` to an absolute path.
+
+### Command-palette commands
+
+- `Langfuse: Configure` — save Langfuse base URL, public key, and secret key in Amp workspace configuration.
+- `Langfuse: Status` — show export status, missing settings, local JSONL path, and capture settings without exposing secrets.
+- `Langfuse: Configure Capture` — opt into or out of prompt/output/tool/cwd capture.
 
 ### Environment variables
 
@@ -232,6 +263,20 @@ When Langfuse credentials are configured, the plugin buffers events for each Amp
 The local JSONL transport remains enabled even when Langfuse export is configured, so you can inspect the normalized event stream while debugging.
 
 ## Development
+
+End users only need [Amp](https://ampcode.com/) with plugin support. Development requires [Bun](https://bun.sh/).
+
+Install dependencies:
+
+```bash
+bun install
+```
+
+Build the standalone plugin artifact:
+
+```bash
+bun run build:plugin
+```
 
 Run tests:
 
