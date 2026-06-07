@@ -1,5 +1,6 @@
 import type { LangfuseExtensionConfig } from '../config/env'
 import type { AgentTelemetryEvent } from '../telemetry/agent-telemetry-event'
+import { createAgentSpanID, createRunKey } from '../adapter/ids'
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
@@ -41,6 +42,7 @@ export class LangfuseTransport {
     })
 
     if (event.event_type === 'agent.end') {
+      this.mergeOrphanRunInto(event, draft)
       await this.sendRun(event.run_id, draft)
       this.runs.delete(event.run_id)
     }
@@ -64,6 +66,18 @@ export class LangfuseTransport {
     const created: RunDraft = { events: [], spans: new Map() }
     this.runs.set(runID, created)
     return created
+  }
+
+  private mergeOrphanRunInto(event: AgentTelemetryEvent, draft: RunDraft): void {
+    const orphanRunID = createRunKey(event.session_id, 'unknown')
+    if (orphanRunID === event.run_id) return
+
+    const orphan = this.runs.get(orphanRunID)
+    if (!orphan) return
+
+    draft.events = [...orphan.events, ...draft.events]
+    draft.spans = new Map([...orphan.spans, ...draft.spans])
+    this.runs.delete(orphanRunID)
   }
 
   private async sendRun(runID: string, draft: RunDraft): Promise<void> {
@@ -120,7 +134,7 @@ export class LangfuseTransport {
       body: compact({
         id: first.span_id,
         traceId: runID,
-        parentObservationId: first.parent_span_id,
+        parentObservationId: first.parent_span_id ?? (first.event_type.startsWith('tool.') ? createAgentSpanID(runID) : undefined),
         name: observationName(latest),
         startTime: first.timestamp,
         endTime: latest.event_type.endsWith('.end') || latest.event_type.endsWith('.result') ? latest.timestamp : undefined,

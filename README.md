@@ -17,6 +17,7 @@ This repository currently implements the first usable Langfuse integration miles
 - Derives safe shell/file metadata using Amp plugin helper APIs when available.
 - Writes newline-delimited JSON telemetry locally.
 - Sends completed agent turns to Langfuse as one trace with child span observations when `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set.
+- Provides command-palette commands for workspace credential setup, status checks, and capture settings.
 - Keeps prompt, assistant output, and tool I/O capture disabled by default.
 - Redacts common secret-bearing fields and token-looking values before output.
 
@@ -33,7 +34,21 @@ bun install
 
 ## Installation
 
-This plugin is already placed where Amp loads project plugins:
+This repository can produce a standalone bundled plugin artifact for other Amp users:
+
+```bash
+bun run build:plugin
+```
+
+The distributable file is:
+
+```text
+dist/langfuse.ts
+```
+
+See [`docs/onboarding.md`](docs/onboarding.md) for global and project-local install instructions.
+
+In this development workspace, the plugin is already placed where Amp loads project plugins:
 
 ```text
 .amp/plugins/langfuse.ts
@@ -123,7 +138,7 @@ amp
 | `LANGFUSE_HOST` | unset | Backward-compatible alias for `LANGFUSE_BASE_URL`. |
 | `LANGFUSE_ENVIRONMENT` | unset | Optional Langfuse trace environment. |
 | `LANGFUSE_RELEASE` | unset | Optional Langfuse trace release. |
-| `LANGFUSE_SAMPLE_RATE` | `1` | Parsed and clamped to `0..1`; sampling is not yet applied by the local transport. |
+| `LANGFUSE_SAMPLE_RATE` | `1` | Parsed and clamped to `0..1`; sampling is not yet applied by the current transports. |
 | `LANGFUSE_CAPTURE_INPUTS` | `false` | When `true`, captures redacted user prompt text on `agent.start`. |
 | `LANGFUSE_CAPTURE_OUTPUTS` | `false` | When `true`, captures redacted `agent.end` messages. |
 | `LANGFUSE_CAPTURE_TOOL_IO` | `false` | When `true`, captures redacted tool input/output on tool events. |
@@ -136,11 +151,11 @@ Boolean variables accept `1`, `true`, `yes`, or `on` as true values. Other value
 
 ### Amp workspace configuration
 
-`Langfuse: Configure` and `Langfuse: Configure Capture` write this namespaced shape to Amp workspace configuration:
+`Langfuse: Configure` and `Langfuse: Configure Capture` write Langfuse settings through Amp workspace configuration. Depending on how Amp stores plugin settings, the persisted key may be `langfuse` or the namespaced `amp.langfuse`; the plugin reads both forms.
 
 ```ts
 {
-  langfuse: {
+  'amp.langfuse': {
     baseUrl: 'https://cloud.langfuse.com',
     publicKey: 'pk-lf-...',
     secretKey: 'sk-lf-...',

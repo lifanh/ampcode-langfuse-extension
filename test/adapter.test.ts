@@ -75,4 +75,13 @@ describe('Amp telemetry adapter', () => {
     expect(event.parent_span_id).toBeUndefined()
     expect(event.status).toBe('error')
   })
+
+  test('uses agent end message id when agent start was missed', () => {
+    const adapter = createAmpTelemetryAdapter({ config: createDefaultConfig(), now: () => '2026-05-30T00:00:00.000Z' })
+
+    const event = adapter.onAgentEnd({ thread: { id: 'T-thread' }, id: 'msg-1', message: 'done', status: 'done', messages: [] })
+
+    expect(event.run_id).toBe('T-thread:msg-1')
+    expect(event.span_id).toBe('agent:T-thread:msg-1')
+  })
 })

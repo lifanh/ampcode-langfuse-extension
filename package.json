@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "bun run build:plugin",
+    "build:plugin": "bun build .amp/plugins/langfuse.ts --bundle --target=bun --outfile=dist/langfuse.ts",
+    "check:plugin": "test -s dist/langfuse.ts && ! grep -E '^import .*from \"(\\.|src/|\\.amp/)' dist/langfuse.ts",
+    "release:check": "bun test && bun run typecheck && bun run build:plugin && bun run check:plugin",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

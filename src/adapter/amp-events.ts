@@ -164,7 +164,12 @@ export function createAmpTelemetryAdapter(options: AmpTelemetryAdapterOptions = 
     },
 
     onAgentEnd(event: AgentEndLikeEvent): AgentTelemetryEvent {
-      const run = currentRun(event.thread.id) ?? fallbackRun(event.thread.id)
+      const run = currentRun(event.thread.id) ?? {
+        threadID: event.thread.id,
+        messageID: event.id,
+        runID: createRunKey(event.thread.id, event.id),
+        agentSpanID: createAgentSpanID(createRunKey(event.thread.id, event.id)),
+      }
       const telemetry = base(event, {
         event_type: 'agent.end',
         run_id: run.runID,

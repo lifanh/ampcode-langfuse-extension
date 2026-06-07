@@ -131,4 +131,51 @@ describe('Langfuse transport', () => {
 
     expect(calls).toBe(0)
   })
+
+  test('merges orphan unknown tool events into the real trace when agent start was missed', async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    const transport = new LangfuseTransport({
+      config: {
+        ...createDefaultConfig(),
+        publicKey: 'pk-lf-test',
+        secretKey: 'sk-lf-test',
+        baseUrl: 'https://cloud.langfuse.com',
+      },
+      fetch: async (url, init) => {
+        requests.push({ url: String(url), init: init ?? {} })
+        return new Response(JSON.stringify({ successes: [] }), { status: 207 })
+      },
+    })
+
+    await transport.emit(event({
+      event_type: 'tool.call',
+      timestamp: '2026-05-30T00:00:01.000Z',
+      run_id: 'T-thread:unknown',
+      span_id: 'tool-1',
+      tool_name: 'Read',
+      status: 'running',
+    }))
+    await transport.emit(event({
+      event_type: 'tool.result',
+      timestamp: '2026-05-30T00:00:02.000Z',
+      run_id: 'T-thread:unknown',
+      span_id: 'tool-1',
+      tool_name: 'Read',
+      status: 'done',
+    }))
+
+    await transport.emit(event({ event_type: 'agent.end', timestamp: '2026-05-30T00:00:03.000Z', run_id: 'T-thread:msg-1', span_id: 'agent:T-thread:msg-1', status: 'done' }))
+
+    expect(requests).toHaveLength(1)
+    const payload = JSON.parse(String(requests[0]?.init.body))
+    expect(payload.batch[0].body.id).toBe('T-thread:msg-1')
+    expect(payload.batch).toContainEqual(expect.objectContaining({
+      id: 'span-create:tool-1',
+      body: expect.objectContaining({
+        traceId: 'T-thread:msg-1',
+        parentObservationId: 'agent:T-thread:msg-1',
+        name: 'tool.Read',
+      }),
+    }))
+  })
 })
