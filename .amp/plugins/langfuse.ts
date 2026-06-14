@@ -1,4 +1,5 @@
 import type { PluginAPI } from '@ampcode/plugin'
+import { dirname, sep } from 'node:path'
 
 import { createAmpTelemetryAdapter } from '../../src/adapter/amp-events'
 import { configFromSources, describeCaptureSettings, describeConfigStatus, type LangfuseExtensionConfig, type LangfusePluginSettings } from '../../src/config/env'
@@ -12,6 +13,7 @@ interface TelemetryTransport {
 }
 
 export default function (amp: PluginAPI) {
+  const workspaceRoot = inferWorkspaceRoot(process.cwd())
   let config = configFromSources()
   let adapter = createAdapter(config)
   let transports = createTransports(config)
@@ -20,12 +22,12 @@ export default function (amp: PluginAPI) {
     return createAmpTelemetryAdapter({
       config: nextConfig,
       helpers: amp.helpers,
-      workspaceRoot: process.cwd(),
+      workspaceRoot,
     })
   }
 
   function createTransports(nextConfig: LangfuseExtensionConfig): TelemetryTransport[] {
-    return [new JsonlTransport(nextConfig.localJsonlPath), new LangfuseTransport({ config: nextConfig })]
+    return [new JsonlTransport(nextConfig.localJsonlPath, { baseDirectory: workspaceRoot }), new LangfuseTransport({ config: nextConfig })]
   }
 
   function applyConfig(nextConfig: LangfuseExtensionConfig): void {
@@ -160,4 +162,8 @@ async function selectBoolean(ctx: { ui: { select(options: { title: string; messa
     options: ['off', 'on'],
   })
   return selected ? selected === 'on' : current
+}
+
+function inferWorkspaceRoot(currentDirectory: string): string {
+  return currentDirectory.endsWith(`${sep}.amp${sep}plugins`) ? dirname(dirname(currentDirectory)) : currentDirectory
 }

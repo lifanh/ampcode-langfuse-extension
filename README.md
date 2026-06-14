@@ -87,11 +87,11 @@ Then confirm setup with:
 Langfuse: Status
 ```
 
-The status command reports whether Langfuse export is enabled, which required settings are missing, and the current capture settings without exposing secrets.
+The status command reports whether Langfuse export is enabled, which required settings are missing, the local JSONL path, and the current capture settings without exposing secrets. It also reminds you that Langfuse traces appear after the current Amp turn completes.
 
 ### 5. Start using Amp
 
-Start or continue an Amp thread in the workspace. After each Amp turn ends, the plugin sends one Langfuse trace:
+Start or continue an Amp thread in the workspace. The plugin buffers events while Amp is working, then sends one Langfuse trace after each Amp turn ends:
 
 - Trace name: `ampcode.agent`
 - Trace ID: `<amp-thread-id>:<amp-message-id>`
@@ -103,6 +103,8 @@ The plugin also writes local JSONL telemetry for debugging. By default:
 ```text
 .amp/langfuse/events.jsonl
 ```
+
+For project-local installs, that relative path is resolved from the workspace root, not from `.amp/plugins/`.
 
 For the full onboarding guide, including upgrade and uninstall steps, see [`docs/onboarding.md`](docs/onboarding.md).
 
@@ -252,7 +254,7 @@ ID conventions:
 
 ## Langfuse output shape
 
-When Langfuse credentials are configured, the plugin buffers events for each Amp user turn and sends them after `agent.end` using Langfuse's public ingestion endpoint:
+When Langfuse credentials are configured, the plugin buffers events for each Amp user turn and sends them after `agent.end` using Langfuse's public ingestion endpoint. In-progress turns are not visible in Langfuse until Amp emits `agent.end`:
 
 - Trace name: `ampcode.agent`
 - Trace ID: `${thread.id}:${agentStart.id}`

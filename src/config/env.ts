@@ -39,6 +39,8 @@ export interface ConfigStatus {
   message: string
 }
 
+const TRACE_UPLOAD_TIMING_MESSAGE = 'Langfuse traces upload after each Amp turn completes.'
+
 export function createDefaultConfig(): LangfuseExtensionConfig {
   return {
     publicKey: undefined,
@@ -93,8 +95,8 @@ export function describeConfigStatus(config: LangfuseExtensionConfig): ConfigSta
     langfuseExportEnabled,
     missingLangfuseKeys,
     message: langfuseExportEnabled
-      ? `Langfuse export enabled for ${config.baseUrl}. Local JSONL telemetry enabled at ${config.localJsonlPath}.`
-      : `Langfuse export disabled; missing ${missingLangfuseKeys.join(', ')}. Local JSONL telemetry enabled at ${config.localJsonlPath}.`,
+      ? `Langfuse export enabled for ${config.baseUrl}. Local JSONL telemetry enabled at ${config.localJsonlPath}. ${TRACE_UPLOAD_TIMING_MESSAGE}`
+      : `Langfuse export disabled; missing ${missingLangfuseKeys.join(', ')}. Local JSONL telemetry enabled at ${config.localJsonlPath}. ${TRACE_UPLOAD_TIMING_MESSAGE}`,
   }
 }
 

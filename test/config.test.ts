@@ -50,13 +50,13 @@ describe('configuration UX', () => {
     expect(describeConfigStatus(configFromSources({}, {}))).toEqual({
       langfuseExportEnabled: false,
       missingLangfuseKeys: ['LANGFUSE_PUBLIC_KEY', 'LANGFUSE_SECRET_KEY', 'LANGFUSE_BASE_URL'],
-      message: 'Langfuse export disabled; missing LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL. Local JSONL telemetry enabled at .amp/langfuse/events.jsonl.',
+      message: 'Langfuse export disabled; missing LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL. Local JSONL telemetry enabled at .amp/langfuse/events.jsonl. Langfuse traces upload after each Amp turn completes.',
     })
 
     expect(describeConfigStatus(configFromSources({}, { langfuse: { publicKey: 'pk-lf-test', secretKey: 'sk-lf-test', baseUrl: 'https://cloud.langfuse.com' } }))).toEqual({
       langfuseExportEnabled: true,
       missingLangfuseKeys: [],
-      message: 'Langfuse export enabled for https://cloud.langfuse.com. Local JSONL telemetry enabled at .amp/langfuse/events.jsonl.',
+      message: 'Langfuse export enabled for https://cloud.langfuse.com. Local JSONL telemetry enabled at .amp/langfuse/events.jsonl. Langfuse traces upload after each Amp turn completes.',
     })
   })
 })

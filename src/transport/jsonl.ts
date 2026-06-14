@@ -1,10 +1,18 @@
 import { mkdir, appendFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, isAbsolute, resolve } from 'node:path'
 
 import type { AgentTelemetryEvent } from '../telemetry/agent-telemetry-event'
 
+interface JsonlTransportOptions {
+  baseDirectory?: string
+}
+
 export class JsonlTransport {
-  constructor(private readonly path: string) {}
+  private readonly path: string
+
+  constructor(path: string, options: JsonlTransportOptions = {}) {
+    this.path = options.baseDirectory && !isAbsolute(path) ? resolve(options.baseDirectory, path) : path
+  }
 
   async emit(event: AgentTelemetryEvent): Promise<void> {
     await mkdir(dirname(this.path), { recursive: true })

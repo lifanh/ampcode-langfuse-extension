@@ -136,14 +136,16 @@ Default JSONL path:
 .amp/langfuse/events.jsonl
 ```
 
-If you installed the plugin globally and the runtime resolves relative paths differently, set an explicit path before starting Amp:
+For project-local installs, the default relative path is resolved from the workspace root, so the file is written to `<workspace>/.amp/langfuse/events.jsonl` rather than `<workspace>/.amp/plugins/.amp/langfuse/events.jsonl`.
+
+If you installed the plugin globally and want to avoid any ambiguity, set an explicit path before starting Amp:
 
 ```bash
 export LANGFUSE_LOCAL_JSONL_PATH=/absolute/path/to/events.jsonl
 amp
 ```
 
-Langfuse traces are sent after each Amp turn ends. A trace uses:
+Langfuse traces are sent after each Amp turn ends. In-progress turns are buffered locally and are not visible in Langfuse until Amp emits `agent.end`. A trace uses:
 
 - Name: `ampcode.agent`
 - Trace ID: `<amp-thread-id>:<amp-message-id>`

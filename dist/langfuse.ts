@@ -1,4 +1,7 @@
 // @bun
+// .amp/plugins/langfuse.ts
+import { dirname as dirname2, sep } from "path";
+
 // src/adapter/ids.ts
 function createRunKey(threadID, messageID) {
   return `${threadID}:${String(messageID)}`;
@@ -11,6 +14,7 @@ function createSessionSpanID(threadID) {
 }
 
 // src/config/env.ts
+var TRACE_UPLOAD_TIMING_MESSAGE = "Langfuse traces upload after each Amp turn completes.";
 function createDefaultConfig() {
   return {
     publicKey: undefined,
@@ -58,7 +62,7 @@ function describeConfigStatus(config) {
   return {
     langfuseExportEnabled,
     missingLangfuseKeys,
-    message: langfuseExportEnabled ? `Langfuse export enabled for ${config.baseUrl}. Local JSONL telemetry enabled at ${config.localJsonlPath}.` : `Langfuse export disabled; missing ${missingLangfuseKeys.join(", ")}. Local JSONL telemetry enabled at ${config.localJsonlPath}.`
+    message: langfuseExportEnabled ? `Langfuse export enabled for ${config.baseUrl}. Local JSONL telemetry enabled at ${config.localJsonlPath}. ${TRACE_UPLOAD_TIMING_MESSAGE}` : `Langfuse export disabled; missing ${missingLangfuseKeys.join(", ")}. Local JSONL telemetry enabled at ${config.localJsonlPath}. ${TRACE_UPLOAD_TIMING_MESSAGE}`
   };
 }
 function describeCaptureSettings(config) {
@@ -241,12 +245,12 @@ function createAmpTelemetryAdapter(options = {}) {
 
 // src/transport/jsonl.ts
 import { mkdir, appendFile } from "fs/promises";
-import { dirname } from "path";
+import { dirname, isAbsolute, resolve } from "path";
 
 class JsonlTransport {
   path;
-  constructor(path) {
-    this.path = path;
+  constructor(path, options = {}) {
+    this.path = options.baseDirectory && !isAbsolute(path) ? resolve(options.baseDirectory, path) : path;
   }
   async emit(event) {
     await mkdir(dirname(this.path), { recursive: true });
@@ -403,6 +407,7 @@ function compact(object) {
 
 // .amp/plugins/langfuse.ts
 function langfuse_default(amp) {
+  const workspaceRoot = inferWorkspaceRoot(process.cwd());
   let config = configFromSources();
   let adapter = createAdapter(config);
   let transports = createTransports(config);
@@ -410,11 +415,11 @@ function langfuse_default(amp) {
     return createAmpTelemetryAdapter({
       config: nextConfig,
       helpers: amp.helpers,
-      workspaceRoot: process.cwd()
+      workspaceRoot
     });
   }
   function createTransports(nextConfig) {
-    return [new JsonlTransport(nextConfig.localJsonlPath), new LangfuseTransport({ config: nextConfig })];
+    return [new JsonlTransport(nextConfig.localJsonlPath, { baseDirectory: workspaceRoot }), new LangfuseTransport({ config: nextConfig })];
   }
   function applyConfig(nextConfig) {
     config = nextConfig;
@@ -534,6 +539,9 @@ async function selectBoolean(ctx, title, current) {
     options: ["off", "on"]
   });
   return selected ? selected === "on" : current;
+}
+function inferWorkspaceRoot(currentDirectory) {
+  return currentDirectory.endsWith(`${sep}.amp${sep}plugins`) ? dirname2(dirname2(currentDirectory)) : currentDirectory;
 }
 export {
   langfuse_default as default
